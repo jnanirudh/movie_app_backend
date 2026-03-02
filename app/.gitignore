@@ -1,0 +1,54 @@
+# --- Python Specific ---
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+# (Matches Claude's structure and your current setup)
+.venv/
+venv/
+ENV/
+env/
+
+# Distributions / Packaging
+dist/
+build/
+*.egg-info/
+
+# --- Environment & Secrets ---
+# NEVER commit your .env file as it contains your TMDB_API_KEY and JWT_SECRET
+.env
+.env.local
+.env.secret
+
+# --- Database & Migrations ---
+# If you ever use a local SQLite file for testing
+*.sqlite3
+*.db
+
+# --- IDE & System Files ---
+# macOS specific
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# VS Code specific
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Android Studio / IntelliJ specific
+.idea/
+*.iml
+
+# --- Testing & Coverage ---
+.pytest_cache/
+.coverage
+htmlcov/
+nosetests.xml
+coverage.xml
+*.cover
+*.log
