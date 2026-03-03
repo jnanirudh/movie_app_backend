@@ -14,10 +14,11 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     display_name = Column(String, nullable=True)
     avatar_url = Column(String, nullable=True)
+    phone_number = Column(String, unique=True, nullable=True, index=True)
+    is_phone_verified = Column(Boolean, default=False) 
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    # Relationships — lets you do user.reviews, user.watchlist
     reviews = relationship("Review", back_populates="user", cascade="all, delete-orphan")
     watchlist = relationship("Watchlist", back_populates="user", cascade="all, delete-orphan")

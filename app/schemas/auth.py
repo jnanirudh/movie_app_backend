@@ -33,3 +33,14 @@ class UserOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+class PhoneSendOTPRequest(BaseModel):
+    phone_number: str
+
+class PhoneVerifyOTPRequest(BaseModel):
+    phone_number: str
+    otp: str
+
+class PhoneSendOTPResponse(BaseModel):
+    message: str
+    expires_in_minutes: int
