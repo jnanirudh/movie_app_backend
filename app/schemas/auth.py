@@ -1,19 +1,26 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, EmailStr, field_validator, model_validator
 import re
 
 
 class SignupRequest(BaseModel):
-    phone: str
+    phone: str | None = None
+    email: EmailStr | None = None
     password: str
 
-    @field_validator("phone")
+    @model_validator(mode="after")
+    def at_least_one_identifier(self):
+        if not self.phone and not self.email:
+            raise ValueError("Provide at least one of phone or email")
+        return self
+
+    @field_validator("phone", mode="before")
     @classmethod
     def validate_phone(cls, v):
-        # Accepts +91XXXXXXXXXX or 10-digit Indian numbers
+        if v is None:
+            return v
         cleaned = re.sub(r"\s+", "", v)
         if not re.match(r"^(\+91)?[6-9]\d{9}$", cleaned):
             raise ValueError("Enter a valid Indian phone number")
-        # Normalize to +91XXXXXXXXXX
         if not cleaned.startswith("+91"):
             cleaned = "+91" + cleaned
         return cleaned
@@ -27,8 +34,15 @@ class SignupRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    phone: str
+    phone: str | None = None
+    email: EmailStr | None = None
     password: str
+
+    @model_validator(mode="after")
+    def at_least_one_identifier(self):
+        if not self.phone and not self.email:
+            raise ValueError("Provide either phone or email to login")
+        return self
 
 
 class TokenResponse(BaseModel):
