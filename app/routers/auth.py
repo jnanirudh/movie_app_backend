@@ -5,6 +5,7 @@ from app.database import get_db
 from app.models.user import User
 from app.schemas.auth import SignupRequest, LoginRequest, TokenResponse
 from app.utils.security import hash_password, verify_password, create_access_token
+from app.dependencies import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -30,6 +31,7 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)):
         phone=payload.phone,
         email=payload.email,
         hashed_password=hash_password(payload.password),
+        display_name=payload.display_name if payload.display_name else None,
     )
     db.add(user)
     db.commit()
@@ -37,6 +39,19 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)):
 
     token = create_access_token({"sub": str(user.id)})
     return TokenResponse(access_token=token)
+
+
+@router.get("/me")
+def get_me(current_user: User = Depends(get_current_user)):
+    return {
+        "id": str(current_user.id),
+        "phone": current_user.phone,
+        "email": current_user.email,
+        "display_name": current_user.display_name,
+        "avatar_url": current_user.avatar_url,
+        "is_active": current_user.is_active,
+        "created_at": current_user.created_at,
+    }
 
 
 @router.post("/login", response_model=TokenResponse)

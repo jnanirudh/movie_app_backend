@@ -6,6 +6,7 @@ class SignupRequest(BaseModel):
     phone: str | None = None
     email: EmailStr | None = None
     password: str
+    display_name: str | None = None
 
     @model_validator(mode="after")
     def at_least_one_identifier(self):

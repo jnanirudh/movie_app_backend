@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from app.dependencies import get_db, get_current_user
+from app.database import get_db
+from app.dependencies import get_current_user
 from app.models.user import User
 from app.models.interaction import Review
 from app.models.movie import Movie
 from app.schemas.review import ReviewCreate, ReviewUpdate, ReviewOut, ReviewWithMovie
-from app.services.tmdb import get_movie_details
 import uuid
 
 router = APIRouter(prefix="/api/v1/reviews", tags=["Reviews"])
@@ -20,26 +20,13 @@ def _get_or_404(db: Session, review_id: uuid.UUID) -> Review:
 
 @router.get("/movie/{movie_id}", response_model=list[ReviewOut])
 def get_movie_reviews(movie_id: int, db: Session = Depends(get_db)):
-    """
-    Get all reviews for a specific movie. Public — no auth required.
-    Replaces your Firestore query: where('movieId', isEqualTo: movieId)
-    """
     reviews = db.query(Review).filter(Review.movie_id == movie_id).all()
-    # Attach display_name from user relationship
-    result = []
-    for r in reviews:
-        out = ReviewOut(
-            id=r.id,
-            movie_id=r.movie_id,
-            user_id=r.user_id,
-            display_name=r.user.display_name if r.user else None,
-            rating=r.rating,
-            comment=r.comment,
-            created_at=r.created_at,
-            updated_at=r.updated_at,
-        )
-        result.append(out)
-    return result
+    return [ReviewOut(
+        id=r.id, movie_id=r.movie_id, user_id=r.user_id,
+        display_name=r.user.display_name if r.user else None,
+        rating=r.rating, comment=r.comment,
+        created_at=r.created_at, updated_at=r.updated_at,
+    ) for r in reviews]
 
 
 @router.get("/user/me", response_model=list[ReviewWithMovie])
@@ -47,33 +34,24 @@ def get_my_reviews(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """
-    Get all reviews by the logged-in user, with movie info attached.
-    Used by profile screen. Replaces your ReviewedMoviesService + Firestore query.
-    """
     reviews = db.query(Review).filter(Review.user_id == current_user.id).all()
     result = []
     for r in reviews:
         movie_data = None
         if r.movie:
-            poster = r.movie.poster_path
             movie_data = {
                 "id": r.movie.id,
                 "title": r.movie.title,
-                "poster_path": poster,
+                "poster_path": r.movie.poster_path,
                 "release_date": r.movie.release_date,
                 "vote_average": r.movie.vote_average,
                 "original_language": r.movie.original_language,
             }
         result.append(ReviewWithMovie(
-            id=r.id,
-            movie_id=r.movie_id,
-            user_id=r.user_id,
+            id=r.id, movie_id=r.movie_id, user_id=r.user_id,
             display_name=current_user.display_name,
-            rating=r.rating,
-            comment=r.comment,
-            created_at=r.created_at,
-            updated_at=r.updated_at,
+            rating=r.rating, comment=r.comment,
+            created_at=r.created_at, updated_at=r.updated_at,
             movie=movie_data,
         ))
     return result
@@ -81,7 +59,6 @@ def get_my_reviews(
 
 @router.get("/user/{user_id}", response_model=list[ReviewOut])
 def get_user_reviews(user_id: uuid.UUID, db: Session = Depends(get_db)):
-    """Get all reviews by a specific user. Public."""
     reviews = db.query(Review).filter(Review.user_id == user_id).all()
     return [ReviewOut(
         id=r.id, movie_id=r.movie_id, user_id=r.user_id,
@@ -98,17 +75,10 @@ def create_review(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """
-    Create a review. Enforces one review per user per movie.
-    Replaces your Firestore: doc('{userId}_{movieId}').set(...)
-    """
-    # Check duplicate
     existing = db.query(Review).filter_by(user_id=current_user.id, movie_id=movie_id).first()
     if existing:
         raise HTTPException(status_code=409, detail="You have already reviewed this movie")
 
-    # If movie doesn't exist in our DB yet, we can still store the review by movie_id
-    # (movies are fetched live from TMDB, not pre-loaded)
     review = Review(
         user_id=current_user.id,
         movie_id=movie_id,
@@ -120,14 +90,10 @@ def create_review(
     db.refresh(review)
 
     return ReviewOut(
-        id=review.id,
-        movie_id=review.movie_id,
-        user_id=review.user_id,
+        id=review.id, movie_id=review.movie_id, user_id=review.user_id,
         display_name=current_user.display_name,
-        rating=review.rating,
-        comment=review.comment,
-        created_at=review.created_at,
-        updated_at=review.updated_at,
+        rating=review.rating, comment=review.comment,
+        created_at=review.created_at, updated_at=review.updated_at,
     )
 
 
@@ -138,9 +104,7 @@ def update_review(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Update your own review."""
     review = _get_or_404(db, review_id)
-
     if review.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="You can only edit your own reviews")
 
@@ -165,9 +129,7 @@ def delete_review(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Delete your own review."""
     review = _get_or_404(db, review_id)
-
     if review.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="You can only delete your own reviews")
 
